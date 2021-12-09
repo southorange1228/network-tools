@@ -1,0 +1,27 @@
+{
+  "name": "network-tools",
+  "version": "0.0.0",
+  "description": "a network tool for node.js power by c++ and node-addon-api",
+  "main": "index.js",
+  "scripts": {
+    "clean": "rm -rf node_modules && yarn workspaces run clean"
+  },
+  "keywords": [
+    "ping",
+    "c++",
+    "node.js",
+    "node-addon-api"
+  ],
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "author": "southorange",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "lerna": "^4.0.0",
+    "bindings": "^1.5.0",
+    "cmake-js": "^6.3.0",
+    "node-addon-api": "^4.2.0"
+  }
+}

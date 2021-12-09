@@ -1,0 +1,16 @@
+{
+  "packages": ["packages/*"],
+  "command": {
+    "bootstrap": {
+      "hoist": true,
+      "npmClientArgs": ["--no-package-lock", "--no-ci"]
+    },
+    "publish": {
+      "verifyAccess": false,
+      "registry": "https://mirrors.tencent.com/npm/"
+    }
+  },
+  "npmClient": "yarn",
+  "useWorkspaces": true,
+  "version": "independent"
+}
