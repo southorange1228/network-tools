@@ -177,7 +177,7 @@ void Ping::SendPacket() {
     this->send_pack_num++;
 }
 
-int Ping::ResolvePakcet(int pack_size) {
+int Ping::ResolvePacket(int pack_size) {
     int icmp_len, ip_header_len;
     ICMP_HEADER * icmp_pointer;
     IP_HEADER * ip_pointer = (IP_HEADER *)recv_pack;
@@ -194,9 +194,7 @@ int Ping::ResolvePakcet(int pack_size) {
         lost_pack_num++;
         return -1;
     }
-    if((icmp_pointer->icmp_type == ICMP_ECHOREPLY) &&
-       (backup_ip == inet_ntoa(recv_addr.sin_addr)) &&
-       (icmp_pointer->id == getpid())){
+    if((icmp_pointer->icmp_type == ICMP_ECHO_REPLY) && (backup_ip == inet_ntoa(recv_addr.sin_addr)) && icmp_pointer->id == getpid()){
 
         time_send = (struct timeval *)icmp_pointer->timestamp;
 

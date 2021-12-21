@@ -10,8 +10,8 @@
 using namespace std;
 
 #define PACK_SIZE 32;
-#define ICMP_ECHO 0;
-#define ICMP_REPLY 8;
+#define ICMP_ECHO 0
+#define ICMP_ECHO_REPLY 8
 
 struct PingOptions {
     char * addr;
@@ -64,7 +64,7 @@ private:
     void statistic();
 
     int GeneratePacket();
-    int ResolvePakcet(int pack_size);
+    int ResolvePacket(int pack_size);
 
     PingOptions options;
 
