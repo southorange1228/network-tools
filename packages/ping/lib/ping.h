@@ -1,18 +1,15 @@
 #include "napi.h"
 #include <iostream>
-#include <stdlib.h>
-#include <unistd.h>
-#include <signal.h>
-#include <string>
-#include <string.h>
-#include <netinet/ip_icmp.h>
-
+#include <netdb.h>
 #include <sys/socket.h>
-#include <sys/types.h>
 #include <sys/time.h>
+#include <unistd.h>
+#include <sys/types.h>
 #include <arpa/inet.h>
 
 using namespace std;
+
+#define PACK_SIZE 32;
 
 struct PingOptions {
     char * addr;
@@ -20,7 +17,31 @@ struct PingOptions {
     int retry;
 };
 
-#define PACK_SIZE 32;
+struct IP_HEADER {
+    unsigned char header_length :4; // header of length
+    unsigned char version :4;  // version
+    unsigned char tos;  // type of service
+    unsigned short total_length; // total length of packet
+    unsigned short identifier; // id
+    unsigned short frag_and_flags; // fragment and flag
+    unsigned char ttl; // ttl
+    unsigned char protocol; // protocol eg: TCP UDP etc.
+    unsigned short checksum; // checksum
+    unsigned long source_ip; // source ip
+    unsigned long dest_ip;  // destination ip
+} ;
+
+
+struct ICMP_HEADER {
+    unsigned char icmp_type;
+    unsigned char icmp_code;
+    unsigned short icmp_checksum;
+    unsigned short id;
+    unsigned short seq;
+    unsigned long timestamp;
+};
+
+
 
 class Ping: public Napi::ObjectWrap<Ping> {
 public:

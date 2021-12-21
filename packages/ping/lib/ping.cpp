@@ -1,7 +1,4 @@
 #include "ping.h"
-#include "netdb.h"
-
-using namespace std;
 
 Napi::Object Ping::Init(Napi::Env env, Napi::Object exports) {
     Napi::Function func = DefineClass(env,"Ping",{
@@ -76,25 +73,20 @@ unsigned short Ping::CheckSum(unsigned short * header, int length) {
     int check_sum = 0;              //校验和
     int nleft = length;          //还未计算校验和的数据长度
     unsigned short * p = header; //用来做临时指针
-    unsigned short temp;            //用来处理字节长度为奇数的情况
 
     while(nleft > 1){
         check_sum += *p++;          //check_sum先加以后，p的指针才向后移
-        nleft -= 2;
+        nleft -= sizeof(unsigned short);
     }
 
-    //奇数个长度
-    if(nleft == 1){
-        //利用char类型是8个字节，将剩下的一个字节压入unsigned short（16字节）的高八位
-        *(unsigned char *)&temp = *(unsigned char *)p;
-        check_sum += temp;
+    if (nleft){
+        check_sum += *(unsigned char*)p;
     }
 
     check_sum = (check_sum >> 16) + (check_sum & 0xffff);   //将之前计算结果的高16位和低16位相加
     check_sum += (check_sum >> 16);                         //防止上一步也出现溢出
-    temp = ~check_sum;              //temp是最后的校验和
 
-    return temp;
+    return (unsigned short)(~check_sum);
 }
 
 void Ping::CreateSocket() {
@@ -126,7 +118,8 @@ void Ping::CreateSocket() {
     //inet_addr()将一个点分十进制的IP转换成一个长整数型数
     if((in_addr = inet_addr(input_domain.c_str())) == INADDR_NONE){
         //输入的不是点分十进制的ip地址
-        if(gethostbyname_r(input_domain.c_str(), &host_info, buff, sizeof(buff), &host_pointer, &errnop)){
+        host_pointer = gethostbyname(input_domain.c_str());
+        if(host_pointer == NULL){
             //非法域名
             fprintf(stderr, "Get host by name error:%s \n\a", strerror(errno));
             exit(1);
@@ -142,10 +135,148 @@ void Ping::CreateSocket() {
     //将ip地址备份下来
     this->backup_ip = inet_ntoa(send_addr.sin_addr);
 
-    printf("PING %s (%s) %d(%d) bytes of data.\n", input_domain.c_str(),
-           backup_ip.c_str(), PACK_SIZE - 8, PACK_SIZE + 20);
-
     gettimeofday(&first_send_time, NULL);
+}
+
+int Ping::GeneratePacket()
+{
+    int pack_size;
+    ICMP_HEADER *icmp_pointer;
+    struct timeval * time_pointer;
+
+    //将发送的char[]类型的send_pack直接强制转化为icmp结构体类型，方便修改数据
+    icmp_pointer = (ICMP_HEADER *)send_pack;
+
+    //type为echo类型且code为0代表回显应答（ping应答）
+    icmp_pointer->icmp_type = ICMP_ECHO;
+    icmp_pointer->icmp_code = 0;
+    icmp_pointer->icmp_checksum = 0;           //计算校验和之前先要将校验位置0
+    icmp_pointer->seq = send_pack_num + 1; //用send_pack_num作为ICMP包序列号
+    icmp_pointer->id = getpid();       //用进程号作为ICMP包标志
+
+    pack_size = PACK_SIZE;
+
+    //将icmp结构体中的数据字段直接强制类型转化为timeval类型，方便将Unix时间戳赋值给icmp_data
+    time_pointer = (struct timeval *)icmp_pointer->timestamp;
+
+    gettimeofday(time_pointer, NULL);
+
+    icmp_pointer->icmp_checksum = CheckSum((unsigned short *)send_pack, pack_size);
+
+    return pack_size;
+}
+
+void Ping::SendPacket() {
+    int pack_size = GeneratePacket();
+
+    if((sendto(sock_fd, send_pack, pack_size, 0, (const struct sockaddr *)&send_addr, sizeof(send_addr))) < 0){
+        fprintf(stderr, "Sendto error:%s \n\a", strerror(errno));
+        exit(1);
+    }
+
+    this->send_pack_num++;
+}
+
+int Ping::ResolvePakcet(int pack_size) {
+    int icmp_len, ip_header_len;
+    ICMP_HEADER * icmp_pointer;
+    IP_HEADER * ip_pointer = (IP_HEADER *)recv_pack;
+    double rtt;
+    struct timeval * time_send;
+
+    ip_header_len = ip_pointer->header_length << 2;                     //ip报头长度=ip报头的长度标志乘4
+    icmp_pointer = (ICMP_HEADER *)(recv_pack + ip_header_len);  //pIcmp指向的是ICMP头部，因此要跳过IP头部数据
+    icmp_len = pack_size - ip_header_len;                       //ICMP报头及ICMP数据报的总长度
+
+    //收到的ICMP包长度小于报头
+    if(icmp_len < 8) {
+        printf("received ICMP pack lenth:%d(%d) is error!\n", pack_size, icmp_len);
+        lost_pack_num++;
+        return -1;
+    }
+    if((icmp_pointer->icmp_type == ICMP_ECHOREPLY) &&
+       (backup_ip == inet_ntoa(recv_addr.sin_addr)) &&
+       (icmp_pointer->id == getpid())){
+
+        time_send = (struct timeval *)icmp_pointer->timestamp;
+
+        if((recv_time.tv_usec -= time_send->tv_usec) < 0) {
+            --recv_time.tv_sec;
+            recv_time.tv_usec += 10000000;
+        }
+
+        rtt = (recv_time.tv_sec - time_send->tv_sec) * 1000 + (double)recv_time.tv_usec / 1000.0;
+
+        if(rtt > (double)max_wait_time * 1000)
+            rtt = max_time;
+
+        if(min_time == 0 | rtt < min_time)
+            min_time = rtt;
+        if(rtt > max_time)
+            max_time = rtt;
+
+        sum_time += rtt;
+
+        printf("%d byte from %s : icmp_seq=%u ttl=%d time=%.1fms\n",
+               icmp_len,
+               inet_ntoa(recv_addr.sin_addr),
+               icmp_pointer->seq,
+               ip_pointer->ttl,
+               rtt);
+
+        recv_pack_num++;
+    } else{
+        printf("throw away the old package %d\tbyte from %s\ticmp_seq=%u\ticmp_id=%u\tpid=%d\n",
+               icmp_len, inet_ntoa(recv_addr.sin_addr), icmp_pointer->seq,
+               icmp_pointer->id, getpid());
+        return -1;
+    }
+
+}
+
+void Ping::RecvPacket() {
+    int recv_size, fromlen;
+    fromlen = sizeof(struct sockaddr);
+
+    while(recv_pack_num + lost_pack_num < send_pack_num) {
+        fd_set fds;
+        FD_ZERO(&fds);              //每次循环都必须清空FD_Set
+        FD_SET(sock_fd, &fds);      //将sock_fd加入集合
+
+        int maxfd = sock_fd + 1;
+        struct timeval timeout;
+        timeout.tv_sec = this->max_wait_time;
+        timeout.tv_usec = 0;
+
+        //使用select实现非阻塞IO
+        int n = select(maxfd, NULL, &fds, NULL, &timeout);
+
+        switch(n) {
+            case -1:
+                fprintf(stderr, "Select error:%s \n\a", strerror(errno));
+                exit(1);
+            case 0:
+                printf("select time out, lost packet!\n");
+                lost_pack_num++;
+                break;
+            default:
+                //判断sock_fd是否还在集合中
+                if(FD_ISSET(sock_fd, &fds)) {
+                    //还在集合中则说明收到了回显的数据包
+                    if((recv_size = recvfrom(sock_fd, recv_pack, sizeof(recv_pack),
+                                             0, (struct sockaddr *)&recv_addr, (socklen_t *)&fromlen)) < 0) {
+                        fprintf(stderr, "packet error(size:%d):%s \n\a", recv_size, strerror(errno));
+                        lost_pack_num++;
+                    } else{
+                        //收到了可能合适的数据包
+                        gettimeofday(&recv_time, NULL);
+
+                        ResolvePakcet(recv_size);
+                    }
+                }
+                break;
+        }
+    }
 }
 
 Napi::Value Ping::start(const Napi::CallbackInfo &info) {
