@@ -9,7 +9,8 @@
 
 using namespace std;
 
-#define PACK_SIZE 32;
+#define PACK_SIZE 32
+#define IP_HEADER_SIZE 20
 #define ICMP_ECHO 0
 #define ICMP_ECHO_REPLY 8
 
@@ -38,8 +39,8 @@ struct ICMP_HEADER {
     unsigned char icmp_type;
     unsigned char icmp_code;
     unsigned short icmp_checksum;
-    unsigned short id;
-    unsigned short seq;
+    unsigned short icmp_id;
+    unsigned short icmp_seq;
     unsigned long timestamp;
 };
 
@@ -82,8 +83,8 @@ private:
     struct sockaddr_in send_addr;   //发送到目标的套接字结构体
     struct sockaddr_in recv_addr;   //接受来自目标的套接字结构体
 
-    char* send_pack;      //用于保存发送的ICMP包
-    char* recv_pack;      //用于保存接收的ICMP包
+    char send_pack[PACK_SIZE];      //用于保存发送的ICMP包
+    char recv_pack[PACK_SIZE + IP_HEADER_SIZE];      //用于保存接收的ICMP包
 
     struct timeval first_send_time; //第一次发送ICMP数据包时的UNIX时间戳
     struct timeval recv_time;       //接收ICMP数据包时的UNIX时间戳
