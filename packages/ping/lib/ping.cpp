@@ -187,7 +187,6 @@ int Ping::ResolvePacket(int pack_size) {
     }
     rtt = (recv_time.tv_sec - time_send_s) * 1000 + (double)recv_time.tv_usec / 1000.0;
 
-
     printf("%d byte from %s : icmp_seq=%u ttl=%d time=%.1fms\n",
            icmp_len,
            inet_ntoa(recv_addr.sin_addr),
