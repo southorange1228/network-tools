@@ -31,7 +31,7 @@ Ping::Ping(const Napi::CallbackInfo &info) : Napi::ObjectWrap<Ping>(info) {
     Napi::Object obj = info[0].ToObject();
     if (obj.Has("addr") && obj.Get("addr").IsString()) {
         string originAddr = obj.Get("addr").As<Napi::String>();
-        this->options.addr = (char *)originAddr.c_str();
+        this->options.addr = originAddr;
     } else {
         Napi::TypeError::New(env, "addr should be string").ThrowAsJavaScriptException();
         return;
@@ -111,9 +111,8 @@ void Ping::CreateSocket() {
     }
 #endif
     send_addr.sin_family = AF_INET;
-
-    if ((in_addr = inet_addr(input_domain.c_str())) == INADDR_NONE) {
-        host_pointer = gethostbyname(input_domain.c_str());
+    if ((in_addr = inet_addr(options.addr.c_str())) == INADDR_NONE) {
+        host_pointer = gethostbyname(options.addr.c_str());
         if (host_pointer == NULL) {
             fprintf(stderr, "Get host by name error:%s \n\a", strerror(errno));
             exit(1);
@@ -150,8 +149,8 @@ int Ping::GeneratePacket() {
 }
 
 void Ping::SendPacket() {
-    int pack_size = GeneratePacket();
-    if ((sendto(sock_fd, send_pack, pack_size, 0, (const struct sockaddr *)&send_addr, sizeof(send_addr))) < 0) {
+    int pack_size = this->GeneratePacket();
+    if((sendto(sock_fd, send_pack, pack_size, 0, (const struct sockaddr *)&send_addr, sizeof(send_addr))) < 0){
         fprintf(stderr, "Sendto error:%s \n\a", strerror(errno));
         exit(1);
     }
@@ -191,6 +190,7 @@ int Ping::ResolvePacket(int pack_size) {
         printf("%d byte from %s : icmp_seq=%u ttl=%d time=%.1fms\n", icmp_len, inet_ntoa(recv_addr.sin_addr),
                icmp_pointer->icmp_seq, ip_pointer->ttl, rtt);
         recv_pack_num++;
+        return 0;
     } else {
         lost_pack_num++;
         return -1;
@@ -214,5 +214,8 @@ void Ping::RecvPacket() {
 
 Napi::Value Ping::start(const Napi::CallbackInfo &info) {
     Napi::Env env = info.Env();
+    CreateSocket();
+    SendPacket();
+    RecvPacket();
     return Napi::Number::New(env, 100);
 }

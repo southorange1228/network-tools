@@ -3,9 +3,10 @@
 const ping = require('bindings')('ping');
 
 const a = new ping.Ping({
-    addr: '127.0.0.1',
+    addr: 'www.baidu.com',
     retry: 10,
     timeout: 10
 })
 const b= a.start();
+
 console.log(a,b)

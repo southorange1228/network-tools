@@ -1,0 +1,13 @@
+{
+    "version": "2.0.0",
+    "options": {
+        "cwd": "${workspaceRoot}"
+    },
+    "tasks": [
+        {
+            "label": "build:debug",
+            "type": "shell",
+            "command": "npm run build:debug"
+        }
+    ]
+}

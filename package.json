@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "clean": "rm -rf node_modules && yarn workspaces run clean",
+    "build:debug": "yarn workspaces run build:debug",
     "format": "npm run format-cpp-h && npm run format-cpp-cc && npm run format-cpp-cpp",
     "format-cpp-h": "clang-format --style=file --glob=packages/**/lib/**/*.h -i",
     "format-cpp-cc": "clang-format --style=file --glob=packages/**/lib/**/*.cc -i",

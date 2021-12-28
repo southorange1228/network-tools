@@ -21,6 +21,7 @@
     "registry": "https://mirrors.tencent.com/npm/"
   },
   "scripts": {
+    "build:debug": "cmake-js compile --debug",
     "build": "cmake-js compile",
     "clean": "rm -rf node_modules"
   }

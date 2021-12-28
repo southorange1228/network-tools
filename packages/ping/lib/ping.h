@@ -18,7 +18,7 @@ using namespace std;
 #define ICMP_REPLY_CODE 0
 
 struct PingOptions {
-    char *addr;
+    string addr;
     int timeout;
     int retry;
 };
@@ -69,7 +69,6 @@ private:
 
     PingOptions options;
 
-    std::string input_domain;  //用来存储通过main函数的参数传入的域名或者ip
     std::string backup_ip;     //通过输入的域名或者ip转化成为的ip备份
 
     int sock_fd;

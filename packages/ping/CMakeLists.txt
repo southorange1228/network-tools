@@ -4,9 +4,10 @@ set (CMAKE_CXX_STANDARD 11)
 
 project (ping)
 
-include_directories(${CMAKE_JS_INC} ../../node_modules/node-addon-api ~/.nvm/versions/node/v14.18.1/include/node)
+include_directories(${CMAKE_JS_INC} ~/.nvm/versions/node/v14.18.1/include/node)
 
-file(GLOB SOURCE_FILES "lib/init.cc")
+file(GLOB SOURCE_FILES "lib/*.cc")
+
 add_library(${PROJECT_NAME} SHARED ${SOURCE_FILES} ${CMAKE_JS_SRC})
 set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "" SUFFIX ".node")
 target_link_libraries(${PROJECT_NAME} ${CMAKE_JS_LIB})
