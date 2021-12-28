@@ -6,9 +6,9 @@
   "scripts": {
     "clean": "rm -rf node_modules && yarn workspaces run clean",
     "format": "npm run format-cpp-h && npm run format-cpp-cc && npm run format-cpp-cpp",
-    "format-cpp-h": "clang-format --glob=packages/**/lib/**/*.h",
-    "format-cpp-cc": "clang-format --glob=packages/**/lib/**/*.cc",
-    "format-cpp-cpp": "clang-format --glob=packages/**/lib/**/*.cpp"
+    "format-cpp-h": "clang-format --style=file --glob=packages/**/lib/**/*.h -i",
+    "format-cpp-cc": "clang-format --style=file --glob=packages/**/lib/**/*.cc -i",
+    "format-cpp-cpp": "clang-format --style=file --glob=packages/**/lib/**/*.cpp -i"
   },
   "keywords": [
     "ping",
