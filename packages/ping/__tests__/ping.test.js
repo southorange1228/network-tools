@@ -7,5 +7,5 @@ const a = new ping.Ping({
     retry: 10,
     timeout: 10
 })
-
-console.log(a)
+const b= a.start();
+console.log(a,b)

@@ -54,11 +54,6 @@ Ping::Ping(const Napi::CallbackInfo &info): Napi::ObjectWrap<Ping>(info) {
     this->send_pack_num = 0;
     this->recv_pack_num = 0;
     this->lost_pack_num = 0;
-
-    this->min_time = 0;
-    this->max_time = 0;
-    this->sum_time = 0;
-
 }
 
 Ping::~Ping() {
@@ -89,6 +84,15 @@ unsigned short Ping::CheckSum(unsigned short * header, int length) {
     return (unsigned short)(~check_sum);
 }
 
+unsigned short Ping::GetPid() {
+  unsigned short pid = getpid();
+  // MACOS pid will be more than short
+#ifdef __APPLE__
+  pid = getpid() >> 1;
+#endif
+  return pid;
+}
+
 void Ping::CreateSocket() {
     struct protoent * protocol;
     unsigned long in_addr;
@@ -101,7 +105,7 @@ void Ping::CreateSocket() {
     // MACOS use SOCK_DGRAM
     #ifdef __APPLE__
       if((sock_fd = socket(AF_INET, SOCK_DGRAM, protocol->p_proto)) == -1){
-        fprintf(stderr, "Greate RAW socket error:%s \n\a", strerror(errno));
+        fprintf(stderr, "Create RAW socket error:%s \n\a", strerror(errno));
         exit(1);
       }
     #endif
@@ -135,12 +139,12 @@ int Ping::GeneratePacket()
 
   icmp_pointer = (ICMP_HEADER *)send_pack;
 
-  //type为echo类型且code为0代表回显应答（ping应答）
   icmp_pointer->icmp_type = ICMP_ECHO;
   icmp_pointer->icmp_code = 0;
-  icmp_pointer->icmp_seq = send_pack_num + 1; //用send_pack_num作为ICMP包序列号
-  icmp_pointer->icmp_id = getpid() >> 2;       //用进程号作为ICMP包标志
-  icmp_pointer->timestamp = time_pointer.tv_usec;
+  icmp_pointer->icmp_seq = send_pack_num + 1;
+  icmp_pointer->icmp_id = this->GetPid();
+  icmp_pointer->timestamp_s = time_pointer.tv_sec;
+  icmp_pointer->timestamp_us = time_pointer.tv_usec;
   icmp_pointer->icmp_checksum = this->CheckSum((unsigned short *)send_pack, pack_size);
   return pack_size;
 }
@@ -156,10 +160,12 @@ void Ping::SendPacket() {
 
 int Ping::ResolvePacket(int pack_size) {
   int icmp_len, ip_header_len;
-  ICMP_HEADER * icmp_pointer;
-  IP_HEADER * ip_pointer = (IP_HEADER *)recv_pack;
+  ICMP_HEADER *icmp_pointer;
+  IP_HEADER *ip_pointer = (IP_HEADER *)recv_pack;
   double rtt;
-  unsigned long time_send;
+  struct timeval time_end;
+
+  gettimeofday(&time_end,NULL);
 
   ip_header_len = ip_pointer->header_length << 2;                     //ip报头长度=ip报头的长度标志乘4
   icmp_pointer = (ICMP_HEADER *)(recv_pack + ip_header_len);  //pIcmp指向的是ICMP头部，因此要跳过IP头部数据
@@ -167,28 +173,20 @@ int Ping::ResolvePacket(int pack_size) {
 
   //收到的ICMP包长度小于报头
   if(icmp_len < 8) {
-    printf("received ICMP pack lenth:%d(%d) is error!\n", pack_size, icmp_len);
+    printf("received ICMP pack length:%d(%d) is error!\n", pack_size, icmp_len);
     lost_pack_num++;
     return -1;
   }
 
-  if((icmp_pointer->icmp_type == ICMP_ECHO_REPLY) && (backup_ip == inet_ntoa(recv_addr.sin_addr)) && icmp_pointer->icmp_id == (getpid() > 2)){
-    time_send = icmp_pointer->timestamp;
-    if((recv_time.tv_usec -= time_send) < 0) {
+  if((icmp_pointer->icmp_type == ICMP_ECHO_REPLY) && (backup_ip == inet_ntoa(recv_addr.sin_addr)) && (icmp_pointer->icmp_code == ICMP_REPLY_CODE)){
+    unsigned long time_send_s = icmp_pointer->timestamp_s;
+    unsigned long time_send_us = icmp_pointer->timestamp_us;
+    if((recv_time.tv_usec - time_send_us) < 0) {
       --recv_time.tv_sec;
       recv_time.tv_usec += 10000000;
     }
-    rtt = (recv_time.tv_sec - time_send) * 1000 + (double)recv_time.tv_usec / 1000.0;
+    rtt = (recv_time.tv_sec - time_send_s) * 1000 + (double)recv_time.tv_usec / 1000.0;
 
-    if(rtt > (double)max_wait_time * 1000)
-      rtt = max_time;
-
-    if(min_time == 0 | rtt < min_time)
-      min_time = rtt;
-    if(rtt > max_time)
-      max_time = rtt;
-
-    sum_time += rtt;
 
     printf("%d byte from %s : icmp_seq=%u ttl=%d time=%.1fms\n",
            icmp_len,
@@ -196,12 +194,9 @@ int Ping::ResolvePacket(int pack_size) {
            icmp_pointer->icmp_seq,
            ip_pointer->ttl,
            rtt);
-
     recv_pack_num++;
   } else{
-    printf("throw away the old package %d\tbyte from %s\ticmp_seq=%u\ticmp_id=%u\tpid=%d\ticmp_type=%d\ticmp_code=%d\n",
-           icmp_len, inet_ntoa(recv_addr.sin_addr), icmp_pointer->icmp_seq,
-           icmp_pointer->icmp_id,icmp_pointer->icmp_type,icmp_pointer->icmp_code, getpid() > 2);
+    lost_pack_num++;
     return -1;
   }
 
