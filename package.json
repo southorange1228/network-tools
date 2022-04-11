@@ -1,15 +1,10 @@
 {
   "name": "network-tools",
   "version": "0.0.0",
-  "description": "a network tool for node.js power by c++ and node-addon-api",
+  "description": "a network tool for node.js power by rust and neon",
   "main": "index.js",
   "scripts": {
-    "clean": "rm -rf node_modules && yarn workspaces run clean",
-    "build:debug": "yarn workspaces run build:debug",
-    "format": "npm run format-cpp-h && npm run format-cpp-cc && npm run format-cpp-cpp",
-    "format-cpp-h": "clang-format --style=file --glob=packages/**/lib/**/*.h -i",
-    "format-cpp-cc": "clang-format --style=file --glob=packages/**/lib/**/*.cc -i",
-    "format-cpp-cpp": "clang-format --style=file --glob=packages/**/lib/**/*.cpp -i"
+    "clean": "rm -rf node_modules && yarn workspaces run clean"
   },
   "keywords": [
     "ping",
@@ -24,10 +19,6 @@
   "author": "southorange",
   "license": "UNLICENSED",
   "devDependencies": {
-    "bindings": "^1.5.0",
-    "clang-format": "^1.6.0",
-    "cmake-js": "^6.3.0",
-    "lerna": "^4.0.0",
-    "node-addon-api": "^4.2.0"
+    "lerna": "^4.0.0"
   }
 }
