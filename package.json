@@ -8,9 +8,9 @@
   },
   "keywords": [
     "ping",
-    "c++",
+    "rust",
     "node.js",
-    "node-addon-api"
+    "neon"
   ],
   "private": true,
   "workspaces": [
