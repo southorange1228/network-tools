@@ -1,0 +1,39 @@
+{
+  "name": "orange-ping",
+  "version": "0.0.0",
+  "description": "a ping tool powered by rust",
+  "keywords": [
+    "ping",
+    "rust",
+    "node.js"
+  ],
+  "author": "southorange <15280970040@163.com>",
+  "homepage": "https://github.com/southorange1228/network-tools#readme",
+  "license": "MIT",
+  "main": "lib/ping.js",
+  "directories": {
+    "lib": "lib",
+    "test": "__tests__"
+  },
+  "files": [
+    "lib"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/southorange1228/network-tools.git"
+  },
+  "scripts": {
+    "build": "cargo-cp-artifact -nc dist/index.node -- cargo build --message-format=json-render-diagnostics",
+    "build-debug": "npm run build --",
+    "build-release": "npm run build -- --release",
+    "install": "npm run build-release",
+    "test": "cargo test",
+    "clean": "rm -rf node_modules"
+  },
+  "bugs": {
+    "url": "https://github.com/southorange1228/network-tools/issues"
+  },
+  "devDependencies": {
+    "cargo-cp-artifact": "^0.1"
+  }
+}

@@ -1,7 +1,8 @@
 .idea
-
+**/.DS_Store
 node_modules
 packages/**/node_modules
 
 packages/**/cmake-build-debug
 packages/**/build
+packages/**/target
